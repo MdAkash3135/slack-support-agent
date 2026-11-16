@@ -1,0 +1,8 @@
+.env
+__pycache__
+.venv
+*.pyc
+chroma_data/
+alembic/versions/*.pyc
+node_modules/
+chrome_data/

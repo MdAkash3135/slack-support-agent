@@ -1,0 +1,27 @@
+[project]
+name = "slack-support-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "MdAkash3135", email = "mdeaqubmia@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.20.1",
+    "anthropic>=2.3.0",
+    "chromadb>=1.5.9",
+    "mcp>=2.3.0",
+    "psycopg>=3.3.9",
+    "psycopg2-binary>=2.9.13",
+    "python-dotenv>=1.2.4",
+    "slack-bolt>=1.30.0",
+    "sqlalchemy>=2.1.6",
+]
+
+[project.scripts]
+slack-support-agent = "slack_support_agent:main"
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
