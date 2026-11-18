@@ -38,7 +38,7 @@ def register_handlers(app: AsyncApp, agent: SupportAgent) -> None:
                       thread_ts=thread_ts)
             return
 
-        escalate = reply.confidence < CONFIDENCE_THRESHOLD
+        escalate = reply.kind != "greeting" and reply.confidence < CONFIDENCE_THRESHOLD
         message = reply.answer or "I couldn't find an answer to that."
         if escalate:
             who = f"{SUPPORT_TEAM_MENTION} " if SUPPORT_TEAM_MENTION else ""

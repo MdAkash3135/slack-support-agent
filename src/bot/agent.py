@@ -12,15 +12,29 @@ from src.bot.mcp_client import result_text
 # code; admin tools (add_knowledge, get_metrics) stay out of customers' reach.
 MODEL_TOOLS = {"search_knowledge_base"}
 
+GREETING_REPLY = "Hi sufiur chudir vai , tumare kutta dia .... "
+
 SYSTEM_PROMPT = """You are a customer support assistant in a Slack channel.
 
-Always call search_knowledge_base before answering. Answer only from what it returns.
-If it has nothing relevant, say you don't know instead of guessing.
+## Step 1: classify the message
+- "greeting": the message is ONLY a greeting or small talk with no real request
+  (hi, hello, hey, salam, assalamu alaikum, good morning, yo, what's up, how are you, …),
+  in any language or spelling.
+- "question": anything that asks for help or information, even if it starts with a greeting
+  ("hi, how do refunds work?" is a question).
 
-Write for Slack: short paragraphs, *bold* with single asterisks, bullets with •, no # headings.
+## Step 2: respond
+- greeting: do NOT call any tool. Return {"type": "greeting"} only.
+- question: always call search_knowledge_base first and answer only from what it returns.
+  If it has nothing relevant, say you don't know instead of guessing.
 
-Reply with a JSON object only:
-{"answer": "<your reply to the customer>", "confidence": <number 0 to 1>}
+## Style for answers
+Slack formatting: short paragraphs, *bold* with single asterisks, bullets with •, no # headings.
+
+## Output
+Reply with a JSON object only, one of:
+{"type": "greeting"}
+{"type": "question", "answer": "<reply to the customer>", "confidence": <0 to 1>}
 confidence = how sure you are the answer is correct AND supported by the knowledge base."""
 
 
@@ -28,6 +42,7 @@ confidence = how sure you are the answer is correct AND supported by the knowled
 class AgentReply:
     answer: str
     confidence: float
+    kind: str = "question"  # or "greeting"
 
 
 class SupportAgent:
@@ -73,6 +88,8 @@ class SupportAgent:
             # No tool calls -> this is the final answer.
             if not msg.tool_calls:
                 reply = _parse_reply(msg.content)
+                if reply.kind == "greeting":
+                    return reply  # no search needed, no confidence cap
                 if not found_anything:
                     reply.confidence = min(reply.confidence, 0.3)  # nothing backed it up
                 return reply
@@ -110,6 +127,8 @@ def _search_found(output: str) -> bool:
 def _parse_reply(content: str | None) -> AgentReply:
     try:
         data = json.loads(content or "")
+        if data.get("type") == "greeting":
+            return AgentReply(GREETING_REPLY, 1.0, kind="greeting")
         confidence = max(0.0, min(float(data.get("confidence", 0)), 1.0))
         return AgentReply(str(data.get("answer", "")).strip(), confidence)
     except (ValueError, TypeError, AttributeError):
