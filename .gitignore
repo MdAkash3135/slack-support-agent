@@ -6,3 +6,5 @@ chroma_data/
 alembic/versions/*.pyc
 node_modules/
 chrome_data/
+# internal company documents (served as MCP resources, not committed)
+docs/

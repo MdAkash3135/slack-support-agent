@@ -1,11 +1,15 @@
 import json
 from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
 
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.resources import FileResource
+from pypdf import PdfReader
 from sqlalchemy import func
 
 from src.db.config import SessionLocal
@@ -103,6 +107,51 @@ def add_knowledge(title: str, content: str, category: str = "general") -> str:
     entry = create_knowledge_entry(db, title, content, category)
     db.close()
     return json.dumps({"added": True, "id": entry.id, "title": entry.title})
+
+
+# ---------------------------------------------------------------------------
+# Resources: read-only documents, addressed by URI
+# ---------------------------------------------------------------------------
+
+DOCS_DIR = Path(__file__).resolve().parents[2] / "docs"
+SALES_JOURNEY_PDF = DOCS_DIR / "mobile-new-sales-journey.pdf"
+
+# 1) The original PDF file, served as binary (base64 "blob").
+#    Useful for clients/UIs that can display or download a PDF.
+mcp.add_resource(
+    FileResource(
+        uri="docs://mobile-new-sales-journey.pdf",
+        name="mobile_new_sales_journey_pdf",
+        title="Mobile New Sales Journey (PDF)",
+        description="Original PDF of the SURE mobile new sales journey.",
+        mime_type="application/pdf",
+        path=SALES_JOURNEY_PDF,
+    )
+)
+
+
+@lru_cache(maxsize=1)
+def _sales_journey_text() -> str:
+    """Extract the PDF text once and cache it (PDF parsing is slow)."""
+    reader = PdfReader(SALES_JOURNEY_PDF)
+    pages = []
+    for i, page in enumerate(reader.pages, start=1):
+        text = (page.extract_text() or "").strip()
+        if text:
+            pages.append(f"--- Page {i} ---\n{text}")
+    return "\n\n".join(pages)
+
+
+# 2) The same document as plain text, which an LLM can actually read.
+@mcp.resource(
+    "docs://mobile-new-sales-journey",
+    title="Mobile New Sales Journey (text)",
+    description="Text of the SURE mobile new sales journey: registration, island "
+    "selection, bundles, cart, OMS, basket/work orders, Zendesk.",
+    mime_type="text/plain",
+)
+def mobile_new_sales_journey() -> str:
+    return _sales_journey_text()
 
 
 if __name__ == "__main__":
